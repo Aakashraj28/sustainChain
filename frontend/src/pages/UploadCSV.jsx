@@ -19,7 +19,7 @@ export default function UploadCSV() {
     try {
       const fd = new FormData()
       fd.append("file", file)
-      const res = await fetch("${API_BASE}/api/upload", {
+      const res = await fetch("${import.meta.env.VITE_API_URL}/api/upload", {
         method: "POST",
         body: fd
       })
