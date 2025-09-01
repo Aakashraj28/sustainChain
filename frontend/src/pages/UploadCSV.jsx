@@ -3,6 +3,10 @@ import { useNavigate, Link } from "react-router-dom"
 import { motion } from "framer-motion"
 import { UploadCloud, CheckCircle2, Building2 } from "lucide-react"
 
+// At the very top of ResultsPage.jsx (after imports)
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000"
+
+
 export default function UploadCSV() {
   const [file, setFile] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -15,7 +19,7 @@ export default function UploadCSV() {
     try {
       const fd = new FormData()
       fd.append("file", file)
-      const res = await fetch("http://localhost:5000/api/upload", {
+      const res = await fetch("${API_BASE}/api/upload", {
         method: "POST",
         body: fd
       })
