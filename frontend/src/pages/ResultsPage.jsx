@@ -4,6 +4,9 @@ import { motion, AnimatePresence } from "framer-motion"
 import { Filter, BadgeCheck, AlertCircle } from "lucide-react"
 import CompanyTile from "../components/CompanyTile"
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:5000"
+
+
 function useQuery() {
   const { search } = useLocation()
   return useMemo(() => new URLSearchParams(search), [search])
@@ -31,8 +34,8 @@ export default function ResultsPage() {
       setError(null)
       try {
         let url = null
-        if (token) url = `http://localhost:5000/api/results?token=${token}`
-        else if (industry) url = `http://localhost:5000/api/results/industry?industry=${encodeURIComponent(industry)}`
+        if (token) url = `${API_BASE}/api/results?token=${token}`
+        else if (industry) url = `${API_BASE}/api/results/industry?industry=${encodeURIComponent(industry)}`
         if (!url) {
           setError("Missing token or industry.")
           setSuppliers([])
