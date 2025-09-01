@@ -8,7 +8,7 @@ import numpy as np
 
 # --- Config ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-UPLOAD_DIR = os.getenv("UPLOAD_DIR", "/data/uploads")
+UPLOAD_DIR = os.path.join(BASE_DIR, "uploads")
 TOKEN_DIR  = os.getenv("TOKEN_DIR",  "/data/tokens")
 DATA_DIR = os.path.join(BASE_DIR, "data")  
 
