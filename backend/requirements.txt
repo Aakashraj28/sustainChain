@@ -4,3 +4,4 @@ pandas
 numpy
 openpyxl        # for Excel uploads
 python-dotenv   # for env vars if needed
+gunicorn
