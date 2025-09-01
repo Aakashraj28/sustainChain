@@ -17,7 +17,8 @@ os.makedirs(TOKEN_DIR, exist_ok=True)
 os.makedirs(DATA_DIR, exist_ok=True)
 
 app = Flask(__name__)
-CORS(app, resources={r"/api/*": {"origins": "*"}})
+FRONTEND_ORIGIN = os.environ.get("FRONTEND_ORIGIN", "*")  # During dev you can leave "*"
+CORS(app, resources={r"/api/*": {"origins": FRONTEND_ORIGIN}})
 
 @app.get("/api/health")
 def health():
