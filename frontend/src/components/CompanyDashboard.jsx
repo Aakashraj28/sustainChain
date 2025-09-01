@@ -219,7 +219,12 @@ export default function CompanyDashboard({ company, allCompanies }) {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="year" />
                   <YAxis />
-                  <Tooltip />
+                  <Tooltip 
+                      formatter={(value, name) => {
+                      if (name === "value") return null; // Hide this line’s tooltip
+                      return [value, name];
+                    }}
+                    />
                   {/* Thin light blue bars */}
                   <Bar
                     dataKey="value"
