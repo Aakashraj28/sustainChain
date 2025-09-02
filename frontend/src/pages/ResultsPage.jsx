@@ -64,67 +64,77 @@ export default function ResultsPage() {
 const enrichedSuppliers = useMemo(() => {
   if (!suppliers.length) return []
 
-  // --- Emissions per revenue ---
+  // --- Emissions per revenue (log + robust scaling) ---
   const emissionsPerRevenue = suppliers.map(c =>
     (Number(c.emissions_ton) || 0) / Math.max(Number(c.revenue_musd) || 1, 1)
   )
-  const minE = Math.min(...emissionsPerRevenue)
-  const maxE = Math.max(...emissionsPerRevenue)
+
+  const logE = emissionsPerRevenue.map(v => Math.log1p(v)) // compress extremes
+  const sortedE = [...logE].sort((a, b) => a - b)
+  const p5 = sortedE[Math.floor(0.05 * sortedE.length)]
+  const p95 = sortedE[Math.floor(0.95 * sortedE.length)]
+
+  const scale = (val, min, max) =>
+    max > min ? (val - min) / (max - min) : 0.5
 
   // --- Net Zero Duration ---
-  const durations = suppliers
-    .map(c => {
-      const base = Number(c.base_year)
-      const target = Number(c.target_year)
-      return target && base && target > base ? target - base : null
-    })
-    .filter(d => d !== null)
+  const durations = suppliers.map(c => {
+    const base = Number(c.base_year)
+    const target = Number(c.target_year)
+    return target && base && target > base ? target - base : null
+  }).filter(Boolean)
 
-  const minDur = durations.length ? Math.min(...durations) : 0
-  const maxDur = durations.length ? Math.max(...durations) : 1
+  const sortedDur = [...durations].sort((a, b) => a - b)
+  const d5 = sortedDur.length ? sortedDur[Math.floor(0.05 * sortedDur.length)] : 0
+  const d95 = sortedDur.length ? sortedDur[Math.floor(0.95 * sortedDur.length)] : 1
 
-  // --- Num Target Types ---
+  // --- Target types ---
   const targetTypes = suppliers.map(c => Number(c.num_target_types) || 0)
   const minT = Math.min(...targetTypes)
   const maxT = Math.max(...targetTypes)
 
   return suppliers.map(c => {
-    // Emission score
+    // Emission score (log + robust scaling, inverted so lower is better)
     const epr = (Number(c.emissions_ton) || 0) / Math.max(Number(c.revenue_musd) || 1, 1)
-    const emissionScore = maxE > minE ? 1 - (epr - minE) / (maxE - minE) : 1
+    const eprLog = Math.log1p(epr)
+    const emissionScore = 1 - scale(eprLog, p5, p95)
 
     // Certification score
     const certificationScore = c.certified ? 1 : 0
 
-    // Net zero score
+    // Net zero duration + type score
     const base = Number(c.base_year)
     const target = Number(c.target_year)
 
     let durScore = null
     if (target && base && target > base) {
       const duration = target - base
-      durScore = maxDur > minDur ? 1 - (duration - minDur) / (maxDur - minDur) : 1
+      durScore = 1 - scale(duration, d5, d95) // shorter = better
     }
 
     const tTypes = Number(c.num_target_types) || 0
     const typeScore = maxT > minT ? (tTypes - minT) / (maxT - minT) : 0
 
-    let netZeroScore
-    if (durScore === null) {
-      // Choice: penalize, neutral, or ignore
-      netZeroScore = 0.5 * 0 + 0.5 * typeScore // penalize missing years
-      // netZeroScore = 0.5 * 1 + 0.5 * typeScore // neutral
-      // netZeroScore = typeScore                 // ignore duration
-    } else {
-      netZeroScore = 0.5 * durScore + 0.5 * typeScore
-    }
+    // Handle missing duration gracefully
+    const missingDurPenalty = durations.length > 0 ? 0.3 : 0.0
+    const netZeroScore =
+      durScore !== null
+        ? 0.5 * durScore + 0.5 * typeScore
+        : (1 - missingDurPenalty) * typeScore
 
-    // Combine scores with weights
-    const sum_weights = weights.certification + weights.emissions + weights.netzero
-    const sustainability =
-      emissionScore * weights.emissions / sum_weights +
-      certificationScore * weights.certification / sum_weights +
-      netZeroScore * weights.netzero / sum_weights
+    // Adjust weights dynamically if data missing
+    const adjustedWeights = { ...weights }
+    if (!durations.length) adjustedWeights.netzero *= 0.5
+
+    const sum_weights = adjustedWeights.certification + adjustedWeights.emissions + adjustedWeights.netzero
+
+    // Geometric mean (avoid single metric dominating)
+    const sustainability = Math.pow(
+      (emissionScore || 0.01) ** (adjustedWeights.emissions / sum_weights) *
+      (certificationScore || 0.01) ** (adjustedWeights.certification / sum_weights) *
+      (netZeroScore || 0.01) ** (adjustedWeights.netzero / sum_weights),
+      1
+    )
 
     return {
       ...c,
@@ -135,6 +145,7 @@ const enrichedSuppliers = useMemo(() => {
     }
   })
 }, [suppliers, weights])
+
 
 
 
