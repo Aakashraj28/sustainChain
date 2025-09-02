@@ -74,8 +74,11 @@ const enrichedSuppliers = useMemo(() => {
   const p5 = sortedE[Math.floor(0.05 * sortedE.length)]
   const p95 = sortedE[Math.floor(0.95 * sortedE.length)]
 
-  const scale = (val, min, max) =>
-    max > min ? (val - min) / (max - min) : 0.5
+  const scale = (val, min, max) => {
+    if (max <= min) return 0.5
+    const s = (val - min) / (max - min)
+    return Math.min(Math.max(s, 0), 1) // clamp between 0 and 1
+  }
 
   // --- Net Zero Duration ---
   const durations = suppliers.map(c => {
